@@ -1,0 +1,184 @@
+ArcVoltageFaultData = xlsread('E:\我的坚果云\博士\7论文\4.电弧模型\模型\数据处理\断线-10000（4）录波数据- 故障数据 - 电压 - 单A相.xlsx');%导入非故障数据
+save('ArcVoltageFaultData.mat' , 'ArcVoltageFaultData');
+
+ArcCurrentFaultData = xlsread('E:\我的坚果云\博士\7论文\4.电弧模型\模型\数据处理\断线-10000（4）录波数据- 故障数据 - 电流 - 单A相.xlsx');%导入非故障数据
+save('ArcCurrentFaultData.mat' , 'ArcCurrentFaultData');
+
+CapacityVoltageFaultData = xlsread('E:\我的坚果云\博士\7论文\4.电弧模型\模型\数据处理\断线-10000（4）录波数据- 故障数据 - 电容电压 - 单A相.xlsx');%导入非故障数据
+save('ArcVoltageFaultData.mat' , 'ArcVoltageFaultData');
+
+%求流经电弧的电流
+
+C0 = 1.64519*10^(-6);%A相电容
+
+%{
+%%求电容电压相位滞后90度
+for i = 26 : 48000
+    CapacityVoltageFaultData(i-25 , 1) = ArcVoltageFaultData(i, 1);
+end
+%}
+
+I_C = CapacityVoltageFaultData * 314 * C0;%流经电容的电流
+
+I_ARC = ArcCurrentFaultData - I_C;%流经电弧的电流，由于流经电容的电流与测到的电流反向
+
+%figure(999);
+%plot(CapacityVoltageFaultData);
+
+%figure(998);
+%plot(ArcVoltageFaultData);
+
+%{
+figure(1);
+plot(I_C,'b');
+title('Amplitude of Ic')
+xlabel('Point(d)')
+ylabel('|Current_C(A)|')
+legend('I_C')
+%}
+
+
+%{
+figure(2);
+plot(ArcCurrentFaultData,'r');
+title('Amplitude of Id')
+xlabel('Point(d)')
+ylabel('|Current_Groud(A)|')
+legend('I_d')
+%}
+
+%{
+figure(3);
+plot(I_ARC,'g');
+title('Amplitude of Iarc')
+xlabel('Point(d)')
+ylabel('|Current_Arc(A)|')
+legend('I_{Arc}')
+%}
+
+%%计算直流电阻的分压
+
+R = 14824;%直流电阻为14824Ω
+
+U_R = I_ARC * R;
+
+%{
+figure(4);
+plot(U_R,'b');
+title('Amplitude of U_R')
+xlabel('Point(d)')
+ylabel('|Voltage_{R}(V)|')
+legend('U_{R}')
+%}
+
+%%电弧的电压，总电压-直流电阻分压
+
+U_ARC = ArcVoltageFaultData - U_R;
+
+%{
+figure(5);
+plot(U_ARC,'b');
+title('Amplitude of Uarc')
+xlabel('Point(d)')
+ylabel('|Voltage_{Arc}(V)|')
+legend('U_{Arc}')
+%}
+
+%%计算电弧的阻抗变化
+
+G_ARC = I_ARC ./ U_ARC;
+
+%{
+figure(6);
+plot(G_ARC,'b');
+title('Amplitude of Garc')
+xlabel('Point(d)')
+ylabel('|Admittance_Arc(S)|')
+legend('G_{Arc}')
+%}
+
+%%求电弧的伏安特性曲线
+%{
+figure(7);
+plot(I_ARC,U_ARC);
+title('Curve of Voltage and Current')
+xlabel('Current_{Arc}(A)')
+ylabel('Voltage_{Arc}(V)')
+legend('V/A_{Arc}')
+%}
+
+I_ARC = I_ARC';%转置
+I_ARC_One = reshape(I_ARC,100,[]);%单周期形式的电弧电流
+I_ARC = I_ARC';%转置
+
+U_ARC = U_ARC';%转置
+U_ARC_One = reshape(U_ARC,100,[]);%单周期形式的电弧电流
+U_ARC = U_ARC';%转置
+
+%{
+figure(8);
+plot(I_ARC_One(:,1),U_ARC_One(:,1));
+title('Curve of Voltage and Current')
+xlabel('Current_{Arc}(A)')
+ylabel('Voltage_{Arc}(V)')
+legend('V/A_{Arc}')
+%}
+
+%%分析第一周期的tau的变化
+%{
+%%求$\tau$
+for i = 1 : 100
+    Tau(i,1) = (((abs(I_ARC(i,1))/U_ARC(i,1))-G_ARC(i,1))*0.0002)/(G_ARC(i+1,1)-G_ARC(i,1));
+end
+
+
+%%为$\tau$拟合提供100点的G
+for i = 1 : 50
+    G_50(i,1) = G_ARC(i,1);
+end
+
+
+
+figure(9);
+plot(Tau);
+title('Curve of Tau')
+xlabel('Point(d)')
+ylabel('Tau')
+legend('Tau')
+
+
+%%求Tau和G之间的动态关系
+%
+figure(10);
+scatter(G_100(:,1),Tau(:,1));
+title('Tau with G')
+xlabel('G(S)')
+ylabel('Tau')
+legend('Tau with G')
+%}
+
+%%分析电压正半周期的tau的变化
+%求正版周期50点的$\tau$
+for i = 1 : 50
+    Tau_50_positive(i,1) = (((abs(I_ARC(i,1))/U_ARC(i,1))-G_ARC(i,1))*0.0002)/(G_ARC(i+1,1)-G_ARC(i,1));
+end
+
+
+%%为$\tau$拟合提供100点的G
+for i = 1 : 50
+    G_50_positive(i,1) = G_ARC(i,1);
+end
+%}
+
+%%分析电压负半周期的tau的变化
+%求正版周期50点的$\tau$
+for i = 5 : 100
+    Tau_50_negative(i,1) = (((abs(I_ARC(i,1))/U_ARC(i,1))-G_ARC(i,1))*0.0002)/(G_ARC(i+1,1)-G_ARC(i,1));
+end
+
+
+%%为$\tau$拟合提供100点的G
+for i = 51 : 100
+    G_50_negative(i,1) = G_ARC(i,1);
+end
+%}
